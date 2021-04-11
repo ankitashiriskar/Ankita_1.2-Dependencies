@@ -1,0 +1,119 @@
+package com.dependencies.excel;
+
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.util.Iterator;
+import java.util.Vector;
+
+import org.apache.poi.hssf.usermodel.HSSFCell;
+import org.apache.poi.hssf.usermodel.HSSFRow;
+import org.apache.poi.hssf.usermodel.HSSFSheet;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.poifs.filesystem.POIFSFileSystem;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+public class AppMain {
+
+	public static void main(String[] args) {
+
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		}
+
+		String jdbcURL = "jdbc:mysql://localhost:3306/admin";
+		String username = "root";
+		String password = "root";
+
+		String excelFilePath = "C:\\Users\\ADMIN\\Documents\\File.xls";
+
+
+		Connection connection = null;
+
+		try {
+			FileInputStream inputStream = new FileInputStream(excelFilePath);
+
+			Workbook workbook = new HSSFWorkbook(inputStream); //create workbook
+
+			Sheet firstSheet = workbook.getSheetAt(0); // create sheet
+			Iterator<Row> rowIterator = firstSheet.iterator(); 
+
+			connection = DriverManager.getConnection(jdbcURL, username, password);
+
+			String delete = "delete from product";
+			PreparedStatement pstmt = connection.prepareStatement(delete);
+			pstmt.executeUpdate();
+
+			System.out.println("Data Deleted");
+
+			String sql = "insert into product(product_id, product_name, product_source, product_cost, date_product, type) values(?,?,?,?,?,?)";
+			PreparedStatement statement = connection.prepareStatement(sql);
+
+			int count = 0;
+
+			rowIterator.next(); // skip the header row
+
+			while (rowIterator.hasNext()) {
+				Row nextRow = rowIterator.next();
+				Iterator<Cell> cellIterator = nextRow.cellIterator();
+				count++;
+				while (cellIterator.hasNext()) {
+					Cell nextCell = cellIterator.next();
+//					System.out.println(nextCell);
+					int columnIndex = nextCell.getColumnIndex();
+					System.out.println(columnIndex);
+					switch (columnIndex) {
+					case 0:
+						int productId = (int) nextCell.getNumericCellValue();
+						statement.setInt(1, productId);
+						break;
+					case 1:
+						String productName = nextCell.getStringCellValue();
+						statement.setString(2, productName);
+					case 2:
+						String prodSource = nextCell.getStringCellValue();
+						statement.setString(3, prodSource);
+					case 3:
+						String prodCost = nextRow.getCell(3).getStringCellValue();
+						statement.setString(4, String.valueOf(prodCost));
+					case 4:
+						String date = nextCell.getStringCellValue();
+						statement.setString(5, date);
+					case 5:
+						String type = nextCell.getStringCellValue();
+						statement.setString(6, type);
+					}
+				}
+				statement.executeUpdate();
+				
+			}
+			
+			workbook.close();
+
+			System.out.println("Data Inserted");
+			connection.close();
+
+		} catch (IOException ex1) {
+			System.out.println("Error reading file");
+			ex1.printStackTrace();
+		} catch (SQLException ex2) {
+			System.out.println("Database error");
+			ex2.printStackTrace();
+		}
+
+	}
+}
